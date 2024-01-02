@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quadrinho aleatório da Marvel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.18.0/js/md5.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #comic-container {
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #comic-image {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div id="comic-container">
+        <h2>Quadrinho aleatório da Marvel</h2>
+        <div id="comic-image-container">
+            <img id="comic-image" alt="Comic Cover">
+        </div>
+        <p id="comic-title"></p>
+        <p id="comic-description"></p>
+        <p><strong>Edição:</strong> <span id="comic-issue"></span></p>
+        <p><strong>Série:</strong> <span id="comic-series"></span></p>
+        <p><strong>Preço:</strong> <span id="comic-price"></span></p>
+        <p><strong>Páginas:</strong> <span id="comic-pages"></span></p>
+        <p><strong>Personagens:</strong> <span id="comic-characters"></span></p>
+        <p><strong>Criadores:</strong> <span id="comic-creators"></span></p>
+        <p><strong>Evento:</strong> <span id="comic-event"></span></p>
+        <button onclick="loadRandomComic()">Carregar quadrinho aleatório</button>
+    </div>
+
+    <script>
+        function generateHash(ts, privateKey, publicKey) {
+            const toBeHashed = ts + privateKey + publicKey;
+            return md5(toBeHashed);
+        }
+
+        function loadRandomComic() {
+            const publicKey = '186f909edc37adb13e9b97e98a806bec';
+            const privateKey = 'd5ad5c902f3cb774a5587a241dedb7610f4c9f7d';
+            const apiUrl = 'http://gateway.marvel.com/v1/public/comics';
+            // Cria um objeto Date para obter os segundos atuais
+            const currentDate = new Date();
+            const currentSeconds = currentDate.getSeconds();
+
+            const ts = currentDate.getTime() + currentSeconds * 1000; // Adiciona os segundos ao timestamp atual
+            const hash = generateHash(ts, privateKey, publicKey);
+
+            const url = `${apiUrl}?ts=${ts}&apikey=${publicKey}&hash=${hash}`;
+
+            fetch(url, { mode: 'cors' })
+                .then(response => response.json())
+                .then(data => {
+                    const comics = data.data.results;
+
+                    // Encontrar o próximo quadrinho com imagens disponíveis
+                    let randomComicIndex = Math.floor(Math.random() * comics.length);
+                    let randomComic = comics[randomComicIndex];
+                    while (randomComic.images.length === 0) {
+                        randomComicIndex = Math.floor(Math.random() * comics.length);
+                        randomComic = comics[randomComicIndex];
+                    }
+
+                    displayComic(randomComic);
+                    logComicInfo(randomComic);  // Adiciona esta linha para imprimir as informações no console
+                })
+                .catch(error => console.error('Error fetching comic:', error));
+        }
+
+
+        function displayComic(comic) {
+            const comicImage = document.getElementById('comic-image');
+            const comicTitle = document.getElementById('comic-title');
+            const comicDescription = document.getElementById('comic-description');
+            const comicIssue = document.getElementById('comic-issue');
+            const comicSeries = document.getElementById('comic-series');
+            const comicPrice = document.getElementById('comic-price');
+            const comicPages = document.getElementById('comic-pages');
+            const comicCharacters = document.getElementById('comic-characters');
+            const comicCreators = document.getElementById('comic-creators');
+            const comicEvent = document.getElementById('comic-event');
+
+            comicIssue.textContent = `#${comic.issueNumber}`;
+            comicSeries.textContent = comic.series.name;
+            comicPrice.textContent = `$${comic.prices[0].price}`;
+            comicPages.textContent = comic.pageCount;
+
+            // Oculta os elementos se as condições forem atendidas
+            comicPages.parentElement.style.display = comic.pageCount === 0 ? 'none' : 'block';
+            comicEvent.parentElement.style.display = comic.events.available > 0 ? 'block' : 'none';
+
+            comicCharacters.textContent = getCharacterNames(comic.characters.items);
+            comicCreators.textContent = getCreatorNames(comic.creators.items);
+            comicEvent.textContent = comic.events.available > 0 ? comic.events.items[0].name : 'None';
+
+            const images = comic.images;
+            const thumbnailPath = images.length > 0 ? images[0].path : '';
+            const thumbnailExtension = images.length > 0 ? images[0].extension : '';
+
+            comicImage.src = `${thumbnailPath}/portrait_incredible.${thumbnailExtension}`;
+            comicTitle.textContent = comic.title;
+            comicDescription.textContent = comic.description;
+        }
+
+        function getCharacterNames(characters) {
+            return characters.map(character => character.name).join(', ');
+        }
+
+        function getCreatorNames(creators) {
+            return creators.map(creator => `${creator.role}: ${creator.name}`).join(', ');
+        }
+
+        function logComicInfo(comic) {
+            // Imprime todas as informações no console
+            console.log('Comic Information:', comic);
+        }
+
+        window.addEventListener('load', loadRandomComic);
+    </script>
+</body>
+</html>
